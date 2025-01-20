@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload and Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Upload and Management</h1>
+
+    <form id="uploadForm">
+        <label for="fileInput">Choose a file:</label>
+        <input type="file" id="fileInput" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Date and Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="fileTableBody">
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const fileTableBody = document.getElementById('fileTableBody');
+
+        // Fetch files from the server
+        async function fetchFiles() {
+            const response = await fetch('/files');
+            const files = await response.json();
+            fileTableBody.innerHTML = '';
+            files.forEach(file => {
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${file.fileName}</td>
+                    <td>${file.uploadDate}</td>
+                    <td>
+                        <a href="${file.filePath}" download><button>Download</button></a>
+                        <button onclick="confirmAndDelete('${file.serverFileName}')">Delete</button>
+                    </td>
+                `;
+                fileTableBody.appendChild(newRow);
+            });
+        }
+
+        // Handle file upload
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(uploadForm);
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                await fetchFiles();
+                uploadForm.reset();
+            } else {
+                alert('Failed to upload file.');
+            }
+        });
+
+        // Confirm and delete file
+        async function confirmAndDelete(fileName) {
+            const password = prompt('Enter the password to delete this file:');
+            if (!password) return;
+
+            const response = await fetch(`/files/${fileName}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password })
+            });
+
+            if (response.ok) {
+                await fetchFiles();
+            } else {
+                const errorMessage = await response.text();
+                alert(`Error: ${errorMessage}`);
+            }
+        }
+
+        // Load files on page load
+        fetchFiles();
+    </script>
+</body>
+</html>
